@@ -192,3 +192,97 @@ This will create the tables and relationships for the slack app.
 Great! Now navigate to the heroku app - [https://rb-explore-hasura-auth-slack.herokuapp.com](https://rb-explore-hasura-auth-slack.herokuapp.com) for my example - to see the tables with relationships.
 
 ## Try out GraphQL APIs
+
+As you are aware that Hasura gives you Instant GraphQL APIs over Postgres, it can be tested on the table that we just created.
+
+Let's go ahead and start exploring the GraphQL APIs for `users` table.
+
+### Mutation
+
+Head over to Console -> GRAPHIQL tab and insert a user using GraphQL Mutations:
+
+```gql
+mutation {
+  insert_users(
+    objects: [
+      { name: "Praveen", email: "myemail@example.com", password: "password123" }
+    ]
+  ) {
+    affected_rows
+  }
+}
+```
+
+Click on the `Play` button on the GraphiQL interface to execute the query.
+
+You should get a response looking something like this:
+
+```js
+{
+  "data": {
+    "insert_users": {
+      "affected_rows": 1
+    }
+  }
+}
+```
+
+Great! You have now consumed the mutation query for the `users` table that you just created. Easy isn't it?
+
+Tip: You can use the `Explorer` on the GraphiQL interface to generate the mutation in a few clicks.
+
+### Query
+
+Now let's go ahead and query the data that we just inserted:
+
+```gql
+query {
+  users {
+    id
+    name
+    created_at
+  }
+}
+```
+
+You should get a response looking something like this:
+
+```js
+{
+  "data": {
+    "users": [
+      {
+        "id": "686b21d3-67e3-4285-bae8-9994f32a646e",
+        "name": "Praveen",
+        "created_at": "2020-06-20T04:34:37.632368+00:00"
+      }
+    ]
+  }
+}
+```
+
+Note that some columns like `created_at` have default values, even though you did not insert them during the mutation.
+
+### Subscription
+
+Let's run a simple subscription query over `users` table to watch for changes to the table:
+
+```gql
+subscription {
+  users {
+    id
+    name
+    created_at
+  }
+}
+```
+
+Initially the subscription query will return the existing results in the response.
+
+Now let's insert new data into the users table and see the changes appearing in the response.
+
+In a new tab, Head over to Console -> `DATA` tab -> users -> Insert Row and insert another row.
+
+And switch to the previous `GRAPHIQL` tab and see the subscription response returning 2 results.
+
+An active subscription query will keep returning the latest set of results depending on the query.
