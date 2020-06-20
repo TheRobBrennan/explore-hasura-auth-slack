@@ -38,3 +38,25 @@ We've kept this course light on developer workflows and environment choices so t
 ## How long will this tutorial take?
 
 Around 45 mins.
+
+# Deploy Hasura
+
+Let's start by deploying Hasura.
+
+## One-click deployment on Heroku
+
+The fastest way to try Hasura out is via Heroku.
+
+- Click [https://heroku.com/deploy?template=https://github.com/hasura/graphql-engine-heroku](https://heroku.com/deploy?template=https://github.com/hasura/graphql-engine-heroku) to deploy GraphQL Engine on Heroku with the free Postgres add-on.
+
+This will deploy Hasura GraphQL Engine on Heroku. A PostgreSQL database will be automatically provisioned along with Hasura. If you don’t have an account on Heroku, you would be required to sign up. Note: It is free to signup and no credit-card is required.
+
+Type in the app name - `rb-explore-hasura-auth-slack` in my example - and select the region of choice and click on `Deploy app`.
+
+## Hasura Console
+
+Once the app is deployed, click on the View button to open the app.
+
+For this demo, you can view [https://rb-explore-hasura-auth-slack.herokuapp.com](https://rb-explore-hasura-auth-slack.herokuapp.com)
+
+Great! You have now deployed Hasura GraphQL Engine and have the admin console ready to get started!
