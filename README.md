@@ -286,3 +286,75 @@ In a new tab, Head over to Console -> `DATA` tab -> users -> Insert Row and inse
 And switch to the previous `GRAPHIQL` tab and see the subscription response returning 2 results.
 
 An active subscription query will keep returning the latest set of results depending on the query.
+
+# Thinking in Roles
+
+In this part of the tutorial, we will look at how to model roles for the app.
+
+Role based access control lets the server control what data is accessed by each user on the client. This can enforce granular restrictions on data access.
+
+Let's think about the different set of roles applicable to users of Slack.
+
+We can broadly classify roles as:
+
+- Hierarchical and Flat or
+- Administrative and Non-Administrative
+
+Every member in Slack has a role and each one has a different level of permissions. For example, every workspace in Slack has an owner who created it. The owner, along with a few admins would be able to completely manage the workspace where as the members of the workspace just get to participate.
+
+On top of all these there's an admin role who can do everything in the backend from creating workspaces, users and deleting records.
+
+Let's dissect each data model to see who can do what.
+
+## Defining Roles
+
+In this section, we will look at how to generally approach modelling roles for permissions with Hasura.
+
+Traditionally you will consider multiple roles based on responsibilities assigned to user.
+
+In the slack app model, a quick analysis will give you possibilities for multiple roles. There are `users` of the app, `workspace owners` who control and manage the workspace, `workspace admins` who have a subset of permissions to manage the workspace, `channel admins` and so on. But the important thing to note is, they are all `users` of the app with just extra permissions to read / write some data. This leaves us to define just a single role called user which can accommodate the above permission layer. We will see how in the sections later.
+
+You will most likely need only one role with Hasura for users of your app. But there are cases where you genuinely need multiple roles to control data access.
+
+### The case for multiple roles
+
+So when are multiple roles used for defining permissions? Let's take a look at the some of the use cases.
+
+#### Logged in vs Publicly accessible data
+
+When some part of the data in the app is publicly visible but some are available only for logged in users, then multiple roles is the way forward. In the slack app, everything is assumed to be available only for logged in users.
+
+#### Different access to columns
+
+In cases where the columns which can be accessed differ based on who is logged in, then multiple roles are used. For example, in the slack app model, the workspace owner can see some columns which are sensitive and restricted read access to other users, then naturally we need to define multiple roles.
+
+#### Backend support / admin teams
+
+If your app has admin/customer support/analytics teams which needs read access across tables without restrictions, then they will have their own individual roles.
+
+You can get away with a single role if you don't have the above constraints.
+
+## User role for the app
+
+In this realtime slack app, we need to restrict all querying only for logged in users. We assume that data is not publicly accessible. Everything revolves around what users do on the app. Also certain columns in tables need not be exposed to the user.
+
+Let's see the different responsibilities that a user can have.
+
+### Administrative
+
+All administrative tasks require write access to the database. Some of the administrative tasks are
+
+- Create and manage workspaces
+- Create and manage channels
+- Add members to workspace and channel
+
+### Non Administrative
+
+Non-administrative tasks require scoped read and write access to the database.
+
+For example, in a Slack app you have Members. They can join a Slack workspace. They can use Slack to communicate and collaborate with other members.
+
+- User can read and send messages to channels
+- User can read and send messages to other users in the same workspace
+
+We need to be able to apply these actions to a role. We will see how in the next section.
