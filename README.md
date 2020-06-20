@@ -782,3 +782,70 @@ The user can only update the message column in `channel_message` table.
 The user who created the message can delete their own message. It translates to the same expression that we defined for the update operation.
 
 Again as in the previous steps, CASCADE delete can be applied to remove all the dependent and dangling data.
+
+# Authentication Modes
+
+In this part, we will look at the different modes for Authentication. Authentication is handled outside of Hasura. You can bring in your own Auth server and integrate it with Hasura. There are broadly two options available.
+
+- JWT Mode
+- Webhook Mode
+
+## JWT Mode
+
+You can configure GraphQL Engine to use the JWT authorization mode to authorize all incoming requests. The auth server is expected to return a valid JWT token, which are decoded and verified by the GraphQL engine, to authorize and get metadata about the request.
+
+A typical architecture with Auth server issuing JWT looks like the one below:
+
+![https://hasura.io/docs/1.0/_images/jwt-auth1.png](https://hasura.io/docs/1.0/_images/jwt-auth1.png)
+
+The Auth Server issues JWT tokens with relevant x-hasura-\* claims to the app which then sends the token to Hasura GraphQL Engine. Hasura then validates the claims to allow the request to go through.
+
+## Webhook Mode
+
+You can also configure GraphQL Engine to use the Webhook mode. Your auth server exposes a webhook that is used to authenticate all incoming requests to the Hasura GraphQL engine server and to get metadata about the request to evaluate access control rules.
+
+The architecture with webhook looks like the one below:
+
+![https://hasura.io/docs/1.0/_images/webhook-auth1.png](https://hasura.io/docs/1.0/_images/webhook-auth1.png)
+
+### Unauthenticated Mode
+
+Sometimes you would like to allow access to data without a user being logged in. This is useful for public feed which is open to all users. Although our Slack app doesn't have this as a use case, it is good to know when this could be used.
+
+## Choosing the right mode
+
+In this part, we will look at which mode is right for the Slack clone.
+
+### Using JWT Mode
+
+JWT mode is a recommended solution with Hasura, if your Auth server can support it.
+
+Our Slack app clone doesn't need to integrate with legacy auth systems or has complex custom rules which can only be processed via a webhook. The Auth server can be configured to inject the right hasura claims into every token it generates ensuring that the permission rules can be applied.
+
+The Slack app has users that needs to be assigned roles. JWT mode is the recommended mode due to ease of integration and the benefits it brings for clients.
+
+### When to use webhook mode?
+
+Webhook mode is generally required if the Auth server you use cannot issue JWT tokens in the format that Hasura expects it to be or doesn't have JWT integration at all to begin with. This is a more common use case with existing legacy auth systems. Do note that with a webhook mode, the webhook has to be deployed, maintained and everytime a request is made to Hasura, it will in turn make a request to the webhook to authorize the request. This could have a slight latency depending on where the webhook is deployed.
+
+## Configuring JWT Secret
+
+In this part, we will look at how to configure the JWT secret.
+
+Follow the instructions [here](https://github.com/hasura/learn-graphql/tree/master/services/backend/auth-server) to setup the Auth server.
+
+### Authenticate JWT using GraphQL Engine
+
+The GraphQL engine comes with built in JWT authentication. You will need to start the engine with the same secret/key as the JWT auth server using the environment variable `HASURA_GRAPHQL_JWT_SECRET` (`HASURA_GRAPHQL_ADMIN_SECRET` is also required to set this up). Read more in [docs](https://hasura.io/docs/1.0/graphql/manual/auth/authentication/jwt.html#running-with-jwt)
+
+A sample CURL command using the above token would be:
+
+```sh
+curl -X POST \
+  https://hasura-auth.herokuapp.com/v1/graphql \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6InRlc3QxMjMiLCJpYXQiOjE1NDAzNzY4MTUuODUzLCJodHRwczovL2hhc3VyYS5pby9qd3QvY2xhaW1zIjp7IngtaGFzdXJhLWFsbG93ZWQtcm9sZXMiOlsiZWRpdG9yIiwidXNlciIsIm1vZCJdLCJ4LWhhc3VyYS11c2VyLWlkIjoiMSIsIngtaGFzdXJhLWRlZmF1bHQtcm9sZSI6InVzZXIiLCJ4LWhhc3VyYS1yb2xlIjoidXNlciJ9fQ.w9uj0FtesZOFUnwYT2KOWHr6IKWsDRuOC9G2GakBgMI' \
+  -H 'Content-Type: application/json' \
+  -d '{ "query": "{ users { id } }" }'
+```
+
+Now you can test this out by navigating to console and making queries without the admin secret. You should ideally get an error.
