@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/TheRobBrennan/explore-hasura-auth-slack/issues"
   },
-  "homepage": "https://github.com/TheRobBrennan/explore-hasura-auth-slack#readme"
+  "homepage": "https://github.com/TheRobBrennan/explore-hasura-auth-slack#readme",
+  "devDependencies": {
+    "hasura-cli": "^1.2.2"
+  }
 }
