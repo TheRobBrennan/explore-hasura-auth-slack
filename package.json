@@ -1,0 +1,20 @@
+{
+  "name": "explore-hasura-auth-slack",
+  "version": "0.0.0",
+  "description": "Based on the tutorial at https://hasura.io/learn/graphql/hasura-auth-slack/",
+  "keywords": [
+    "hasura,",
+    "graphql,",
+    "auth"
+  ],
+  "author": "Rob Brennan <rob@therobbrennan.com> (therobbrennan.com)",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheRobBrennan/explore-hasura-auth-slack.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TheRobBrennan/explore-hasura-auth-slack/issues"
+  },
+  "homepage": "https://github.com/TheRobBrennan/explore-hasura-auth-slack#readme"
+}
