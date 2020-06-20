@@ -60,3 +60,26 @@ Once the app is deployed, click on the View button to open the app.
 For this demo, you can view [https://rb-explore-hasura-auth-slack.herokuapp.com](https://rb-explore-hasura-auth-slack.herokuapp.com)
 
 Great! You have now deployed Hasura GraphQL Engine and have the admin console ready to get started!
+
+# Data Modeling: Slack
+
+In this part of the course, we will build the data model for a realtime slack clone. Our slack app will have the following basic features:
+
+- Users can signup.
+- Users can create workspaces.
+- Workspaces can be managed by the owner of the workspace or the admin of the workspace.
+- Users can be added to channels in the workspace they are part of.
+- Users can send messages to channels in the workspace they are part of.
+- Users can send messages to other users in the same workspace.
+- Users can see which users are online in the workspace they are part of.
+- Broadly this means that we have few top level models in this app.
+
+We will go over them in the subsequent steps.
+
+## Tables for Slack Clone
+
+## Relationships
+
+## Apply Migrations
+
+## Try out GraphQL APIs
