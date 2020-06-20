@@ -829,3 +829,23 @@ The Slack app has users that needs to be assigned roles. JWT mode is the recomme
 Webhook mode is generally required if the Auth server you use cannot issue JWT tokens in the format that Hasura expects it to be or doesn't have JWT integration at all to begin with. This is a more common use case with existing legacy auth systems. Do note that with a webhook mode, the webhook has to be deployed, maintained and everytime a request is made to Hasura, it will in turn make a request to the webhook to authorize the request. This could have a slight latency depending on where the webhook is deployed.
 
 ## Configuring JWT Secret
+
+In this part, we will look at how to configure the JWT secret.
+
+Follow the instructions [here](https://github.com/hasura/learn-graphql/tree/master/services/backend/auth-server) to setup the Auth server.
+
+### Authenticate JWT using GraphQL Engine
+
+The GraphQL engine comes with built in JWT authentication. You will need to start the engine with the same secret/key as the JWT auth server using the environment variable `HASURA_GRAPHQL_JWT_SECRET` (`HASURA_GRAPHQL_ADMIN_SECRET` is also required to set this up). Read more in [docs](https://hasura.io/docs/1.0/graphql/manual/auth/authentication/jwt.html#running-with-jwt)
+
+A sample CURL command using the above token would be:
+
+```sh
+curl -X POST \
+  https://hasura-auth.herokuapp.com/v1/graphql \
+  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6InRlc3QxMjMiLCJpYXQiOjE1NDAzNzY4MTUuODUzLCJodHRwczovL2hhc3VyYS5pby9qd3QvY2xhaW1zIjp7IngtaGFzdXJhLWFsbG93ZWQtcm9sZXMiOlsiZWRpdG9yIiwidXNlciIsIm1vZCJdLCJ4LWhhc3VyYS11c2VyLWlkIjoiMSIsIngtaGFzdXJhLWRlZmF1bHQtcm9sZSI6InVzZXIiLCJ4LWhhc3VyYS1yb2xlIjoidXNlciJ9fQ.w9uj0FtesZOFUnwYT2KOWHr6IKWsDRuOC9G2GakBgMI' \
+  -H 'Content-Type: application/json' \
+  -d '{ "query": "{ users { id } }" }'
+```
+
+Now you can test this out by navigating to console and making queries without the admin secret. You should ideally get an error.
