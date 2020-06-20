@@ -1,0 +1,2 @@
+# NOTE: This endpoint is using my example Hasura back-end on Heroku
+endpoint: https://rb-explore-hasura-auth-slack.herokuapp.com
