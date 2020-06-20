@@ -164,4 +164,31 @@ The above queries won't work yet because we haven't defined the relationships ye
 
 ## Apply Migrations
 
+Let's get started by creating the tables and relationships for the Slack app.
+
+Download the hasura project with migrations from [here](https://hasura.io/learn/graphql/hasura-auth-slack/slack-backend.zip)
+
+First, let's make sure that we have installed our dependencies for this project:
+
+```sh
+$ npm install
+```
+
+Configure the endpoint to point to the heroku app URL. Open the `slack-backend/config.yaml` file and set the endpoint value:
+
+```yml
+endpoint: https://rb-explore-hasura-auth-slack.herokuapp.com
+```
+
+Now let's apply the migrations:
+
+```sh
+$ cd slack-backend/
+$ npx hasura migrate apply
+```
+
+This will create the tables and relationships for the slack app.
+
+Great! Now navigate to the heroku app - [https://rb-explore-hasura-auth-slack.herokuapp.com](https://rb-explore-hasura-auth-slack.herokuapp.com) for my example - to see the tables with relationships.
+
 ## Try out GraphQL APIs
