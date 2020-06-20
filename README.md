@@ -358,3 +358,427 @@ For example, in a Slack app you have Members. They can join a Slack workspace. T
 - User can read and send messages to other users in the same workspace
 
 We need to be able to apply these actions to a role. We will see how in the next section.
+
+# Access Control
+
+In this part of the tutorial, we are going to define role based access control rules for each of the models that we created. Access control rules help in restricting querying on a table based on certain conditions.
+
+Access control rules can be applied on
+
+- Row level
+- Column level
+
+## Row Level
+
+With row level access control, users can access tables without having access to all rows on that table. This is particularly useful to protect sensitive personal data which is part of the table. This way, you can allow all users to access a table, but only a specific number of rows in that table.
+
+![https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/row-level-access-control.png](https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/row-level-access-control.png)
+
+## Column Level
+
+Column level access control lets you restrict access to certain columns in the table. This is useful to hide data which are not relevant, sensitive or used for internal purposes. A typical representation of data looks like:
+
+![https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/column-level-access-control.png](https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/column-level-access-control.png)
+
+As you can imagine, combining both these rules gives a flexible and powerful way to control data access to different stakeholders involved.
+
+## Types of operation
+
+Access control rules can be applied to all the CRUD operations (Create, Read, Update and Delete). Some operations can be completely restricted to not allow the user perform the operation.
+
+In the previous section we learnt that the slack app requires a role called `user`. We will create permissions for this role in the next part.
+
+## Permissions for Users
+
+Slack app revolves around users. We start off by setting permission rules for the users of the app for the CRUD operations.
+
+### Select permission
+
+What user data is allowed to be read by a logged in user of Slack?
+
+All logged in users can read user data of those who belong to the same workspace as the logged in user.
+
+The requirement translates into something like:
+
+- You can read your own user data.
+- You can read user data of others who are part of the same workspace that you are a member of.
+
+This is a typical boolean expression where you say the one who is trying to access a record in the users table must either belong to them `id = X-Hasura-User-Id` or they must be part of the same workspace `workspace_members.user_id = X-Hasura-User-Id`
+
+#### Row level select
+
+The expanded valid boolean expression of the above statement looks like this:
+
+```js
+{
+  "_or": [
+    {
+      "id": {
+        "_eq": "X-Hasura-User-Id"
+      }
+    },
+    {
+      "workspace_members": {
+        "user_id": {
+          "_eq": "X-Hasura-User-Id"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Column level select
+
+After filtering out the rows that a user is supposed to acccess, we need to filter out which fields they are allowed to read. Apart from the `password` field, every column in the users table is accessible by any authenticated user, since there is no sensitive data that needs to be restricted to only the user.
+
+![https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/slack-users-select-columns.png](https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/slack-users-select-columns.png)
+
+We are done with read access. Let's move on to write access which lets a user to either create, update or delete.
+
+### Insert permission
+
+Are the users of the app allowed to directly insert into `users` table? No. A user signs up on the app which goes through the auth server which deals with user registration, validation, triggering welcome email and so on. Hence the auth server with access to admin role will insert the record into the `users` table post validation and generating the right token. We can skip defining permisisons for the user role's insert operation.
+
+### Update permission
+
+Who is allowed to update the existing data in `users` table?
+
+As an authenticated user of the app, i should be able to update ONLY my own personal data.
+
+#### Row level update
+
+The above condition translates to the following expression:
+
+```js
+{
+  "id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+
+Update the row only if the `id` of the column matches the id value of the authenticated user (`X-Hasura-User-Id`)
+
+#### Column level update
+
+We need to fix up on what columns the user is allowed to update directly from the app. A simple checklist would be to not allow the user to update their own `id`, `email`, and `created_at`. We are also going to restrict them to directly modify the `password` column since that is delegated to the auth server which does the necessary validation before the update.
+
+### Delete permission
+
+We do not want to allow the user to delete their own user record directly from the app and hence we can skip defining rules for this operation. This is assumed to be done by Auth servers which handles user management post validations for deleting user accounts.
+
+### Potential for other roles
+
+All of the above rules were applied for the user role. But let's say there are fields which are private to the user and not meant to be read by other users. For example, in our current model, `phone_number` field is assumed to be public. In case the requirement for it is to be private to the user, then we need to create a new role, let's call it `me` and define rules for select permission without the `phone_number` column.
+
+The row level select rule will translate into something like this:
+
+```js
+{
+  "id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+
+And the column level permission remains the same for the role `me` but the role `user` will not have access to `phone_number` column.
+
+## Permissions for Workspaces
+
+### Select permission
+
+Which workspace data is allowed to be read by a logged in user of Slack?
+
+- Anybody who is a member of a workspace should be able to read data about their workspace.
+
+This is a typical boolean expression where you say the one who is trying to access a record in the workspace table must either be the owner `owner_id = X-Hasura-User-Id` or they must be part of the same workspace `workspace_members.user_id = X-Hasura-User-Id`
+
+#### Row level select
+
+The expanded valid boolean expression of the above statement looks like this:
+
+```js
+{
+  "_or": [
+    {
+      "owner_id": {
+        "_eq": "X-Hasura-User-Id"
+      }
+    },
+    {
+      "workspace_members": {
+        "user_id": {
+          "_eq": "X-Hasura-User-Id"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Column level select
+
+After filtering out the rows that a user is supposed to acccess, we need to filter out which fields they are allowed to read. Since there is no sensitive data that needs to be restricted to only a certain type of user, we give permission to select for all columns.
+
+We are done with read access. Let's move on to write access which lets a user to either create, update or delete.
+
+### Insert permission
+
+Are the users of the app allowed to directly insert into `workspace` table? Yes, any authenticated user is allowed to create a workspace on their own. It translates into the following expression:
+
+```js
+{
+  "owner_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+
+#### Column presets
+
+You can set static values or session variables as default values for the column while doing an insert.
+
+In the workspace table, the owner_id should be automatically set to the session variable `X-Hasura-User-Id` and the user shouldn't be allowed to set this value. We use Column Presets in this case to achieve this.
+
+![https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/slack-workspace-user-insert.png](https://graphql-engine-cdn.hasura.io/learn-hasura/assets/graphql-hasura-auth/slack-workspace-user-insert.png)
+
+### Update permission
+
+Who is allowed to update the existing data in `workspace` table?
+
+Only an authenticated user of the app and the owner of the workspace should be allowed to update the data in the workspace.
+
+#### Row level update
+
+The above condition translates to the following expression:
+
+```js
+{
+  "owner_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+
+Update the row only if the `owner_id` of the column matches the id value of the authenticated user (`X-Hasura-User-Id`)
+
+#### Column level update
+
+We need to fix up on what columns the user is allowed to update directly from the app. A simple checklist would be to NOT allow the user to update the `id`, `owner_id`, and `created_at` values. The remaining columns can be allowed.
+
+### Delete permission
+
+The owner of the workspace should be the only user who should be able to delete the workspace. This again translates into the following expression:
+
+```js
+{
+  "owner_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+
+Do note that, in case the workspace is deleted all the dependent records in all other tables should also be removed. Hence this can be done as a single operation by the admin role at the server side instead of allowing direct delete of the workspace from the client. The other option is to use ON DELETE triggers to perform a cascade delete which will remove all the dependent rows across the database.
+
+## Permissions for Channels
+
+### Select permission
+
+We need to see what channel data is accessible to users. The criteria looks simple:
+
+- Anybody who is a member of a channel should be able to read data about that channel.
+
+This is a typical boolean expression where you say the one who is trying to access a record in the channel table must be part of the channel `channel_members.user_id = X-Hasura-User-Id`
+
+#### Row level select
+
+The expanded valid boolean expression of the above statement looks like this:
+
+```js
+{
+  "channel_members": {
+    "user_id": {
+      "_eq": "X-Hasura-User-Id"
+    }
+  }
+}
+```
+
+#### Column level select
+
+After filtering out the rows that a user is supposed to acccess, we need to filter out which fields they are allowed to read. Since there is no sensitive data that needs to be restricted to only a certain type of user, we give permission to select for all columns.
+
+We are done with read access. Let's move on to write access which lets a user to either create, update or delete a channel.
+
+### Insert permission
+
+Are the users of the app allowed to directly insert into `channel` table? Yes, any authenticated user who is an owner or an admin is allowed to create a channel on their own. But they can create channels only in workspaces they are part of. It translates into the following expression:
+
+```js
+{
+  "_and": [
+    {
+      "workspace": {
+        "workspace_members": {
+          "user_id": {
+            "_eq": "X-Hasura-User-Id"
+          }
+        }
+      }
+    },
+    {
+      "workspace": {
+        "workspace_members": {
+          "user_type": {
+            "type": {
+              "_in": [
+                "owner",
+                "admin"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+We use the `_and` boolean expression to say both conditions need to be satisfied. The user_type table is an enum with values `owner`, `admin` and `member`. Both owners and admins of the workspace can create a channel and hence the above expression.
+
+#### Column Presets
+
+In the channel table, the `created_by` should be automatically set to the session variable `X-Hasura-User-Id` and the user shouldn't be allowed to set this value. We use Column Presets in this case to achieve this.
+
+### Update permission
+
+Who is allowed to update the existing data in `channel` table?
+
+Only an authenticated user of the app and the owner or admin of the workspace should be allowed to update the data in the workspace.
+
+#### Row level update
+
+The above condition translates to the following expression (same as above):
+
+```js
+{
+  "_and": [
+    {
+      "workspace": {
+        "workspace_members": {
+          "user_id": {
+            "_eq": "X-Hasura-User-Id"
+          }
+        }
+      }
+    },
+    {
+      "workspace": {
+        "workspace_members": {
+          "user_type": {
+            "type": {
+              "_in": [
+                "owner",
+                "admin"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Column level update
+
+We need to fix up on what columns the user is allowed to update directly from the app. Only a channel's public status and name can be allowed to change. (`is_public` and `name`).
+
+### Delete permission
+
+The owner of the workspace and the admins should be the only user(s) who should be able to delete the channel. This again translates into the above boolean expression (same as insert and update).
+
+Do note that, in case the channel is deleted all the dependent records in all other tables should also be removed. Hence this can be done as a single operation by the admin role at the server side instead of allowing direct delete of the channel from the client. The other option is to use ON DELETE triggers to perform a cascade delete which will remove all the dependent rows across the database.
+
+## Permissions for Threads and Messages
+
+We are done with rules for all the base tables (`users`, `workspace` and `channel`). The primary part of slack is for users to send and receive messages on the channel or to other users. Let's see how that is applicable in the access control rules.
+
+Let's start with the `channel_thread` and `channel_thread_message` tables.
+
+### Select permission
+
+We need to list down who can access a message posted on any channel. The requirement looks like:
+
+- Anybody who is a channel member should be able to access all channel threads.
+
+#### Row level select
+
+The expression for `channel_thread` roughly translates to the following:
+
+```js
+{
+  "channel": {
+    "channel_members": {
+      "user_id": {
+        "_eq": "X-Hasura-User-Id"
+      }
+    }
+  }
+}
+```
+
+The expression differs slighlty for `channel_thread_message` since it has one more level of nesting:
+
+```js
+{
+  "channel_thread": {
+    "channel": {
+      "channel_members": {
+        "user_id": {
+          "_eq": "X-Hasura-User-Id"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Column level select
+
+After filtering out the rows that a user is supposed to acccess, we need to filter out which fields they are allowed to read. Since there is no sensitive data that needs to be restricted to only a certain type of user, we give permission to select for ALL columns.
+
+We are done with read access. Let's move on to write access which lets a user to either create, update or delete a channel.
+
+### Insert permission
+
+Any authenticated user who is a part of a workspace can post messages on the channels of the workspace. It translates into the same expression as above for `channel_thread` table.
+
+### Update permission
+
+Users are not allowed to update a `channel_thread`. So then who is allowed to update the existing messages in `channel_thread_message` table?
+
+- Any authenticated user can update their own message posted on any channel.
+
+#### Row level update
+
+The above condition translates to the following expression:
+
+```js
+{
+  "user_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+
+#### Column level update
+
+The user can only update the message column in `channel_message` table.
+
+### Delete permission
+
+The user who created the message can delete their own message. It translates to the same expression that we defined for the update operation.
+
+Again as in the previous steps, CASCADE delete can be applied to remove all the dependent and dangling data.
